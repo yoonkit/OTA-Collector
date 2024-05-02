@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Data Collector for booking.com
 // @namespace    http://tampermonkey.net/
-// @version      0.14
+// @version      0.15
 // @description  Extracts room info for the searched dates
 // @author       Yoon-Kit Yong
 // @match        https://www.booking.com/hotel/*
@@ -160,7 +160,7 @@ function decode_occupancy_config( occ ) {
 
 function decode_beds( description ) {
 
-	let [single, double, twin, king, sofa, futon, pax ] = [0,0,0,0,0,0,0]
+	let [single, double, king, sofa, futon, pax ] = [0,0,0,0,0,0]
 
 	description = description.replaceAll("\n","")
 	if (description.indexOf("Bedroom") >= 0) {
@@ -185,7 +185,7 @@ function decode_beds( description ) {
 		} else if (description.indexOf("sofa bed")>0) {
 			sofa += quantity
 		} else if (description.indexOf("twin bed")>0) {
-			twin += quantity
+			single += quantity
 		} else if (description.indexOf("king bed")>0) {
 			king += quantity
 		} else if (description.indexOf("full bed")>0) {
@@ -196,10 +196,10 @@ function decode_beds( description ) {
 			futon += quantity
 		}
 
-		pax = single + 2*double + 1*twin + 2*king + sofa + futon
+		pax = single + 2*double + 2*king + sofa + futon
 	}
 
-	return { single:single, double:double, twin:twin, king:king, sofa:sofa, futon:futon, pax:pax }
+	return { single:single, double:double, king:king, sofa:sofa, futon:futon, pax:pax }
 	//return  [single, double, twin, king, sofa, futon, pax ]
 }
 
@@ -309,10 +309,8 @@ function get_rooms( ) {
 
 		let room_details = null
 		for (let room of rooms) {
-
-			if (room_details == null) { // set the first row of room types as details
-				room_details = room
-			}
+			
+			if (room.querySelectorAll("td").length >=5) room_details = room // set the first row of room types as details
 
 			// Name and details
 			let id = room_details.querySelector("a[data-room-id]")
@@ -320,6 +318,11 @@ function get_rooms( ) {
 				room_name = id.textContent.replaceAll("\n","")
 				room_id = id.attributes["data-room-id"].textContent
 				ykAlert("Room: " + room_name, 6)
+			} else {
+				id = room_details.querySelector("a.hprt-roomtype-link")
+				if (id != null) {
+					room_name = id.textContent.trim()
+				} else ykAlert("Cannot find the Room Name and ID", -1)
 			}
 
 			let scarce = room_details.querySelector("span.top_scarcity")
@@ -335,13 +338,13 @@ function get_rooms( ) {
 				room_facilities = ";"+facilities.textContent.replaceAll("\n\n\n","; ").replaceAll("\n","").replaceAll(",","")
 			}
 			
-			if (facilities.indexOf("m²")>0) {
+			if (room_facilities.indexOf("m²")>0) {
 				let size_str = room_facilities.split("m²")[0].split(";")
-				room_sqm = parseInt( "0"+ size_str[ size_str.length-1 ].trim() )
+				room_sqm = parseInt( "0"+ size_str[ size_str.length-1 ].replace(/\D/g, '').trim() )
 			}
 
 			// Bedrooms and BedTypes
-			let [ bed_single, bed_double, bed_twin, bed_king, bed_sofa, bed_futon, bed_pax ] = [0,0,0,0,0,0,0]
+			let [ bed_single, bed_double, bed_king, bed_sofa, bed_futon, bed_pax ] = [0,0,0,0,0,0]
 			// let [ single, double, twin, king, sofa, futon, pax ] = [0,0,0,0,0,0,0]
 			let room_bedrooms = 0
 			let bedrooms = room_details.querySelectorAll( "li.bedroom_bed_type" ) // Apartment with multiple rooms
@@ -358,17 +361,22 @@ function get_rooms( ) {
 
 					bed_single += res.single
 					bed_double += res.double
-					bed_twin += res.twin
 					bed_king += res.king
 					bed_sofa += res.sofa
 					bed_futon += res.futon
 					bed_pax += res.pax
 
-					ykAlert( "Multiple room:" + description + " " +[bed_single, bed_double, bed_twin, bed_king, bed_sofa, bed_futon, bed_pax], 6 )
+					ykAlert( "Multiple room:" + description + " " +[bed_single, bed_double, bed_king, bed_sofa, bed_futon, bed_pax], 6 )
 				}
 			} else {
 
 				let bed = room_details.querySelector( "li.rt-bed-type" ) // One Room with different beds
+				
+				if (bed == null) {
+					// case of Partner deal
+					bed = room_details.querySelector( "span.wholesalers_table__bed_options__text")
+				}
+				
 				if (bed != null ) {
 					room_bedrooms = 1
 					description = bed.textContent.replaceAll("\n"," ")
@@ -378,13 +386,12 @@ function get_rooms( ) {
 
 					bed_single += res.single
 					bed_double += res.double
-					bed_twin += res.twin
 					bed_king += res.king
 					bed_sofa += res.sofa
 					bed_futon += res.futon
 					bed_pax += res.pax
 
-					ykAlert( "Single room:" + description + [bed_single, bed_double, bed_twin, bed_king, bed_sofa, bed_futon, bed_pax], 6 )
+					ykAlert( "Single room:" + description + [bed_single, bed_double, bed_king, bed_sofa, bed_futon, bed_pax], 6 )
 				}
 			}
 			if (room_bedrooms == 0) {
@@ -451,7 +458,6 @@ function get_rooms( ) {
 			}
 
 			// Conditions
-			let conditions = room.querySelectorAll( "li.bui-list__item" )
 			let room_remaining = 999
 			let room_reschedule = false
 			let room_refundable = false
@@ -466,6 +472,13 @@ function get_rooms( ) {
 			let room_prepayment = true
 			let room_bfast = false
 			let room_bfastpricepax = 0
+			let room_partneroffer = false
+
+			let conditions = room.querySelectorAll( "li.bui-list__item" )
+			if (conditions.length == 0) { // Partner Offers tend to mess this TD up
+				conditions = room.querySelector("div.tpi-options--section").querySelectorAll("li")
+				room_partneroffer = true
+			}
 
 			for (let condition of conditions) {
 				description = condition.textContent.trim()
@@ -483,7 +496,11 @@ function get_rooms( ) {
 				} else if (description.indexOf("Free cancellation") >= 0) {
 					room_refundable = true
 					room_freecancel = true
-					room_cancelby = decode_bookingdate ( description.split("before ")[1] )
+					if (description.indexOf("before ")>0) {
+						room_cancelby = decode_bookingdate ( description.split("before ")[1] )
+					} else if (description.indexOf(" until ")>0) {
+						room_cancelby = decode_bookingdate ( description.split(" on ")[1] )
+					}
 					room_cancelwindow = day_diff( dt_start, room_cancelby )
 				} else if (description.indexOf("Pay nothing until") >= 0) {
 					room_refundable = true
@@ -520,22 +537,11 @@ function get_rooms( ) {
 			let room_balcony = room_details.querySelector( "svg.-streamline-resort" ) != null
 
 			result.push(
-			[ prop_name, room_name, room_sqm, room_guests, room_price, dt_start, room_discountpct, room_geniusdiscount, room_deal, room_credits, room_bfast, room_bfastpricepax, room_minimumdays, room_remaining, room_reschedule, room_refundable, room_refundablewindow, room_freecancel, room_cancelwindow, room_paynothing, room_paynothingwindow, room_bedrooms, bed_single, bed_double, bed_twin, bed_king, bed_sofa, bed_futon, bed_pax, room_scarcity, room_tax, room_kitchenprivate, room_kitchen, room_ensuite, room_washingmachine, room_tumbledryer, room_view, room_balcony, room_id, prop_reviewscore, prop_limitedsupply_booked, room_price_currency, dt_sample, search_adult, search_room, dt_length, genius_user, genius_level, room_totprice, room_tottax, dt_end, room_facilities, room_cancelby, room_paynothingby, prop_url,
+			[ prop_name, room_name, room_sqm, room_guests, room_price, dt_start, room_discountpct, room_geniusdiscount, room_deal, room_credits, room_bfast, room_bfastpricepax, room_minimumdays, room_remaining, room_reschedule, room_refundable, room_refundablewindow, room_freecancel, room_cancelwindow, room_paynothing, room_paynothingwindow, room_bedrooms, bed_single, bed_double, bed_king, bed_sofa, bed_futon, bed_pax, room_scarcity, room_tax, room_partneroffer, room_kitchenprivate, room_kitchen, room_ensuite, room_washingmachine, room_tumbledryer, room_view, room_balcony, room_id, prop_reviewscore, prop_limitedsupply_booked, room_price_currency, dt_sample, search_adult, search_room, dt_length, genius_user, genius_level, room_totprice, room_tottax, dt_end, room_facilities, room_cancelby, room_paynothingby, prop_url,
 			] )
 
 			ykAlert("Room: " + room_name + " - price: " + room_price_currency + " " + room_price.toLocaleString() + " (" + room_discountpct + "%) pax: (" + room_guests + "," + bed_pax + ") refunddays: " + room_refundablewindow , 2)
 
-			if (room.classList.contains("hprt-table-last-row")) {
-				// Reset the carry forward for the room class
-				room_name = ""
-				room_id = 0
-				room_sqm = 0
-				room_beds = 0
-				room_beds_single = 0
-				room_beds_double = 0
-				room_scarcity = 0
-				room_details = null
-			}
 		}
 
 		ykAlert("Found " + result.length + " rooms", 1 )
@@ -607,7 +613,7 @@ function extract_csv()
 	let result = get_rooms( )
 	let result_csv = toCSV( result, '\t' )
 
-	let labels = "prop_name, room_name, room_sqm,  room_guests, room_price,  dt_start, room_discountpct, room_geniusdiscount, room_deal, room_credits, room_bfast, room_bfastpricepax, room_minimumdays, room_remaining, room_reschedule, room_refundable, room_refundablewindow, room_freecancel, room_cancelwindow, room_paynothing, room_paynothingwindow, room_bedrooms, bed_single, bed_double, bed_twin, bed_king, bed_sofa, bed_futon, bed_pax, room_scarcity, room_tax, room_kitchenprivate, room_kitchen, room_ensuite, room_washingmachine, room_tumbledryer, room_view, room_balcony, room_id,  prop_reviewscore, prop_limitedsupply_booked, room_price_currency, dt_sample, search_adult, search_room, dt_length, genius_user, genius_level, room_totprice, room_tottax, dt_end, room_facilities, room_cancelby,  room_paynothingby,  prop_url".replaceAll(",","\t")
+	let labels = "prop_name, room_name, room_sqm,  room_guests, room_price,  dt_start, room_discountpct, room_geniusdiscount, room_deal, room_credits, room_bfast, room_bfastpricepax, room_minimumdays, room_remaining, room_reschedule, room_refundable, room_refundablewindow, room_freecancel, room_cancelwindow, room_paynothing, room_paynothingwindow, room_bedrooms, bed_single, bed_double, bed_king, bed_sofa, bed_futon, bed_pax, room_scarcity, room_tax, room_partneroffer, room_kitchenprivate, room_kitchen, room_ensuite, room_washingmachine, room_tumbledryer, room_view, room_balcony, room_id,  prop_reviewscore, prop_limitedsupply_booked, room_price_currency, dt_sample, search_adult, search_room, dt_length, genius_user, genius_level, room_totprice, room_tottax, dt_end, room_facilities, room_cancelby,  room_paynothingby,  prop_url".replaceAll(",","\t")
 	localStorage.bookingcomlabels = labels
 
     let stored = localStorage.bookingcom
