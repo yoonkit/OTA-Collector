@@ -7,7 +7,6 @@
 // @match        https://booking.com/hotel/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=whatsapp.com
 // @grant        none
-// @require      https://code.jquery.com/jquery-3.5.1.min.js#sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=
 // @run-at       document-idle
 // @updateURL    https://raw.githubusercontent.com/yoonkit/OTA-Collector/main/BookingDotCom.js
 // @downloadURL  https://raw.githubusercontent.com/yoonkit/OTA-Collector/main/BookingDotCom.js
@@ -15,8 +14,8 @@
 
 
 
-var verbosity = 3
-document.verbosity = verbosity
+var verbosity = 3;
+document.verbosity = verbosity;
 
 function ykAlert( msg, type=0 )
 {
