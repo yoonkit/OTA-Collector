@@ -67,6 +67,9 @@ function toCSV(inputArray, separator = ",") {
 
 
 function create_UI() {
+	
+	ykAlert("Creating UI for booking.com collector",1)
+	
 	var btncsv = document.createElement("Button");
 	btncsv.innerHTML = "Find Rooms";
 	btncsv.id = "findRooms"
@@ -689,9 +692,8 @@ function scrape_csv()
 function setup() {
 	create_UI()
 	if (localStorage.bookingcom == null) localStorage.bookingcom = ""
+	ykAlert("Welcome to booking.com collector",1)
 }
 
 setup()
-
-
 
