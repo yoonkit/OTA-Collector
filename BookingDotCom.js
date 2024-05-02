@@ -249,14 +249,14 @@ function get_rooms( ) {
 	let [dt_start, dt_end, dt_length] = [0,0,0]
 	let field_starts = document.querySelectorAll( '[data-testid="date-display-field-start"]')
 	if (field_starts.length > 1) {
-		dt_start = decode_bookingdate( field_starts[1].textContent )
+		dt_start = decode_bookingdate( field_starts[1].textContent, hasyear=false )
 	} else {
 		ykAlert("Could not find 'field start' widget", -1)
 	}
 
 	let field_ends = document.querySelectorAll( '[data-testid="date-display-field-end"]')
 	if (field_ends.length > 1) {
-		dt_end = decode_bookingdate( field_ends[1].textContent )
+		dt_end = decode_bookingdate( field_ends[1].textContent, hasyear=false )
 	} else {
 		ykAlert("Could not find 'field end' widget", -1)
 	}
@@ -329,15 +329,15 @@ function get_rooms( ) {
 				room_scarcity = 999
 			}
 
-			let size = room_details.querySelector( "div[data-name-en='room size']" )
-			if (size != null) {
-				room_sqm = parseInt( size.textContent.split(" ")[0] )
-			}
-
             let room_facilities = ""
 			let facilities = room_details.querySelector( "div.hprt-facilities-block" )
 			if (facilities != null) {
-				room_facilities = facilities.textContent.replaceAll("\n\n\n","; ").replaceAll("\n","").replaceAll(",","")
+				room_facilities = ";"+facilities.textContent.replaceAll("\n\n\n","; ").replaceAll("\n","").replaceAll(",","")
+			}
+			
+			if (facilities.indexOf("m²")>0) {
+				let size_str = room_facilities.split("m²")[0].split(";")
+				room_sqm = parseInt( "0"+ size_str[ size_str.length-1 ].trim() )
 			}
 
 			// Bedrooms and BedTypes
@@ -511,11 +511,11 @@ function get_rooms( ) {
 				}
 			}
 
-			let room_kitchen = room_details.querySelector( "span[data-name-en='Kitchen']" ) != null
+			let room_kitchen = room_facilities.indexOf("Kitchen") >= 0
 			let room_kitchenprivate = room_details.querySelector( "svg.-streamline-oven" ) != null
 			let room_ensuite = room_details.querySelector( "svg.-streamline-shower" ) != null
-			let room_washingmachine = room_details.querySelector( "span[data-name-en='Washing machine']" ) != null
-			let room_tumbledryer = room_details.querySelector( "span[data-name-en='Tumble dryer (machine)']" ) != null
+			let room_washingmachine = room_facilities.indexOf("Washing machine") >= 0
+			let room_tumbledryer = room_facilities.indexOf("Tumble dryer") >= 0
 			let room_view = room_details.querySelector( "svg.-streamline-mountains" ) != null
 			let room_balcony = room_details.querySelector( "svg.-streamline-resort" ) != null
 
@@ -546,10 +546,12 @@ function get_rooms( ) {
 	return result
 }
 
-function decode_bookingdate( dt ) {
+function decode_bookingdate( dt, hasyear=true ) {
 	// looks like 'Fri 14 Feb'
 	let today = new Date()
-	let parsed = new Date( Date.parse( dt + ' ' + today.getFullYear().toString() ) )
+	
+	if (!hasyear) { dt = dt + ' ' + today.getFullYear().toString()}
+	let parsed = new Date( Date.parse( dt ) )
 
 	if (parsed < today) {
 		parsed.setFullYear( parsed.getFullYear() +1 )
