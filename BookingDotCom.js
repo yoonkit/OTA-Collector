@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Data Collector for booking.com
 // @namespace    http://tampermonkey.net/
-// @version      0.15
+// @version      0.16
 // @description  Extracts room info for the searched dates
 // @author       Yoon-Kit Yong
 // @match        https://www.booking.com/hotel/*
@@ -366,18 +366,18 @@ function get_rooms( ) {
 					bed_futon += res.futon
 					bed_pax += res.pax
 
-					ykAlert( "Multiple room:" + description + " " +[bed_single, bed_double, bed_king, bed_sofa, bed_futon, bed_pax], 6 )
+					ykAlert( "Bedroom " + room_bedrooms + ":" + description + " " +[bed_single, bed_double, bed_king, bed_sofa, bed_futon, bed_pax], 6 )
 				}
 			} else {
 
-				let bed = room_details.querySelector( "li.rt-bed-type" ) // One Room with different beds
+				let beds = room_details.querySelectorAll( "li.rt-bed-type" ) // One Room with different beds
 				
-				if (bed == null) {
+				if (beds.length == 0) {
 					// case of Partner deal
-					bed = room_details.querySelector( "span.wholesalers_table__bed_options__text")
+					beds = room_details.querySelectorAll( "span.wholesalers_table__bed_options__text")
 				}
 				
-				if (bed != null ) {
+				for (let bed of beds ) {
 					room_bedrooms = 1
 					description = bed.textContent.replaceAll("\n"," ")
 
@@ -390,7 +390,6 @@ function get_rooms( ) {
 					bed_sofa += res.sofa
 					bed_futon += res.futon
 					bed_pax += res.pax
-
 					ykAlert( "Single room:" + description + [bed_single, bed_double, bed_king, bed_sofa, bed_futon, bed_pax], 6 )
 				}
 			}
@@ -513,7 +512,7 @@ function get_rooms( ) {
 					room_paynothingwindow = 0
 					room_prepayment = false
 					room_refundable = true
-				} else if (description.indexOf("breakfast") >= 0) {
+				} else if (description.indexOf("reakfast") >= 0) {
 					room_bfast = description.indexOf("included") >= 0
 					if (!room_bfast) {
 						room_bfastpricepax = parseFloat( description.replace(/\D/g, '') )
