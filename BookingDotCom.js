@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scraper for booking.com
 // @namespace    http://tampermonkey.net/
-// @version      0.11
+// @version      0.12
 // @description  Scrapes room info for the searched dates
 // @author       Yoon-Kit Yong
 // @match        https://booking.com/*
@@ -67,7 +67,7 @@ function toCSV(inputArray, separator = ",") {
 
 function create_UI() {
 
-	ykAlert("Creating UI for booking.com collector",1)
+	ykAlert("Creating UI for booking.com collector",3)
 
 	var btncsv = document.createElement("Button");
 	btncsv.innerHTML = "Find Rooms";
