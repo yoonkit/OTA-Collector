@@ -4,7 +4,7 @@
 // @version      0.11
 // @description  Scrapes room info for the searched dates
 // @author       Yoon-Kit Yong
-// @match        https://booking.com/hotel/*
+// @match        https://booking.com/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=whatsapp.com
 // @grant        none
 // @run-at       document-idle
@@ -66,92 +66,91 @@ function toCSV(inputArray, separator = ",") {
 
 
 function create_UI() {
-	
+
 	ykAlert("Creating UI for booking.com collector",1)
-	
+
 	var btncsv = document.createElement("Button");
 	btncsv.innerHTML = "Find Rooms";
 	btncsv.id = "findRooms"
 	btncsv.onclick = function()
-	{ 
-		scrape_csv() 
+	{
+		scrape_csv()
 		btnUpdate.click()
 	}
 
-	ava = document.getElementById("availability_target")
+	let ava = document.getElementById("availability_target")
 	ava.appendChild(btncsv)
-	
+
 	var btnclear = document.createElement("Button");
 	btnclear.innerHTML = "Clear Memory";
 	btnclear.id = "clearMemory"
 	btnclear.onclick = function()
-	{ 
-		localStorage.bookingcom = localStorage.bookingcomlabels; 
-		ykAlert("Cleared Memory") 
+	{
+		localStorage.bookingcom = localStorage.bookingcomlabels;
+		ykAlert("Cleared Memory")
 		btnUpdate.click()
 	}
-	ava.appendChild(btnclear)		
-	
+	ava.appendChild(btnclear)
+
 	var btncopy = document.createElement("Button");
 	btncopy.innerHTML = "Copy to Clipboard";
-	btncopy.onclick = function() { 
+	btncopy.onclick = function() {
 		copyToClipboard( localStorage.bookingcom )
 		ykAlert("Copied " + localStorage.bookingcom.split("\n").length + " room details to clipboard") 
 	}
-	ava.appendChild(btncopy)	
-	
+	ava.appendChild(btncopy)
+
 	var btnUpdate = document.createElement("Button");
 	btnUpdate.innerHTML = "Lines: ";
 	btnUpdate.id = "updateLines"
 	btnUpdate.onclick = function()
-	{ 
-		lines = localStorage.bookingcom.split("\n").length ; 
-		ykAlert("Num Lines: " + lines, 1) 
+	{
+		let lines = localStorage.bookingcom.split("\n").length ;
+		ykAlert("Num Lines: " + lines, 1)
 		btnUpdate.textContent = "Num: " + lines
 	}
 	btnUpdate.click()
-	
-	ava.appendChild(btnUpdate)	
-	
+
+	ava.appendChild(btnUpdate)
+
 }
 
 function decode_occupancy_config( occ ) {
-	adults = occ.split("adult")
+	let adults = occ.split("adult")
+    let [adult, room] = [0,0]
 	if (adults.length > 1) {
-		adult = parseInt( adults[0] )
+		adult = parseInt( "0" + adults[0] )
 	} else {
 		ykAlert( "Cannot decypher number of adults", -1)
 	}
-	rooms = occ.split("room")
+	let rooms = occ.split("room")
 	if (rooms.length > 1) {
 		rooms = rooms[0].split(" ")
-		room = parseInt( rooms[ rooms.length-2 ] )
+		room = parseInt( "0"+rooms[ rooms.length-2 ] )
 	} else {
 		ykAlert( "Cannot decypher number of rooms", -1)
 	}
-	
+
 	ykAlert("Adults = " + adult + " - Rooms = " + room, 5)
-	
+
 	return { adult:adult, room:room }
 	//return [adult, room]
 }
 
 function decode_beds( description ) {
-	
+
 	let [single, double, twin, king, sofa, futon, pax ] = [0,0,0,0,0,0,0]
-	
+
 	description = description.replaceAll("\n","")
 	if (description.indexOf("Bedroom") >= 0) {
 		description = description.split(":")[1] // Bedroom 1: 2 double beds
 	}
-	
-	descriptions = description.split("and ") 
-	
+
+	let descriptions = description.split("and ")
+
 	for (let descr of descriptions ) {
-		
 		description = descr
-		
-		quantity = description.replace(/\D/g, '')
+		let quantity = description.replace(/\D/g, '')
 		quantity = parseInt( "0"+quantity )
 
 		if (description.indexOf("single bed")>0) {
@@ -177,181 +176,165 @@ function decode_beds( description ) {
 		}
 
 		pax = single + 2*double + 1*twin + 2*king + sofa + futon
-		
 	}
-	
-	return  { single:single, double:double, twin:twin, king:king, sofa:sofa, futon:futon, pax:pax }
+
+	return { single:single, double:double, twin:twin, king:king, sofa:sofa, futon:futon, pax:pax }
 	//return  [single, double, twin, king, sofa, futon, pax ]
 }
 
 
-function get_rooms(  ) {
-	
-	dt_sample = new Date()
-	
+function get_rooms( ) {
+
+	let dt_sample = new Date()
+    let description = ""
+
 	// Login Details
-	genius_user = "anon"
-	genius_level = 0
-	login = document.querySelector('[data-testid="header-profile"]')
+	let genius_user = "anon"
+	let genius_level = 0
+	let login = document.querySelector('[data-testid="header-profile"]')
 	if (login != null) {
-		description = login.textContent.substr( 1 ) // skipping the first char
-		details = description.split("Genius Level")
-		
+		let description = login.textContent.substr( 1 ) // skipping the first char
+		let details = description.split("Genius Level")
+
 		genius_user = details[0]
 		if (details.length>1) {	genius_level = parseInt( "0" + details[1].replace(/\D/g, '') ) }
-		
+
 		//login_name = login.getElementsByClassName("a3332d346a")
 		//if (login_name.length>0) { genius_user = login_name[0].textContent }
-		
-	} 
-	
-	currency = document.querySelector('[data-testid="header-currency-picker-trigger"]')
+	}
+
+	let currency = document.querySelector('[data-testid="header-currency-picker-trigger"]')
+    let room_price_currency = ""
 	if (currency != null) {
 		room_price_currency = currency.textContent
 	} else {
 		ykAlert("Could not find 'currency-picker'")
-		room_price_currency = ""
 	}
-	
-	
+
 	// Search Query
 	let [search_adult, search_room] = [0,0]
 	let configs = document.querySelectorAll( "[data-testid='occupancy-config']")
 	if (configs.length > 0) {
 		let occ_config = configs[configs.length-1].textContent
 		ykAlert( occ_config,4 )
-		res_occ = decode_occupancy_config( occ_config )
+		let res_occ = decode_occupancy_config( occ_config )
 		search_adult = res_occ.adult
 		search_room = res_occ.room
 		ykAlert( occ_config + ' = ' + [search_adult, search_room],1 )
 	} else {
 		ykAlert("Could not find 'occupancy-config' widget", -1)
 	}
-	
+
 	let [dt_start, dt_end, dt_length] = [0,0,0]
-	field_starts = document.querySelectorAll( '[data-testid="date-display-field-start"]')
+	let field_starts = document.querySelectorAll( '[data-testid="date-display-field-start"]')
 	if (field_starts.length > 1) {
 		dt_start = decode_bookingdate( field_starts[1].textContent )
 	} else {
 		ykAlert("Could not find 'field start' widget", -1)
 	}
-	
-	field_ends = document.querySelectorAll( '[data-testid="date-display-field-end"]')
+
+	let field_ends = document.querySelectorAll( '[data-testid="date-display-field-end"]')
 	if (field_ends.length > 1) {
 		dt_end = decode_bookingdate( field_ends[1].textContent )
 	} else {
 		ykAlert("Could not find 'field end' widget", -1)
 	}
-	
-	//dt_length = (new Date( (dt_end - dt_start) ).getDate()) - 1
+
 	dt_length = day_diff( dt_start, dt_end )
-	
+
 	// Alerts - minimum nights
-	
-	alerts = document.querySelectorAll( "span.bui-alert__title")
+
+	let alerts = document.querySelectorAll( "span.bui-alert__title")
 	let room_minimumdays = 0
 	if (alerts.length > 0) {
 		for (let alert of alerts) {
-			description = alert.textContent.replaceAll("\n","")
-			
+			let description = alert.textContent.replaceAll("\n","")
+
 			if (description.indexOf("minimum length of stay") >= 0) {
 				room_minimumdays = parseInt( "0" + description.replace(/\D/g, '') )
 			}
 		}
 	}
-	
-	
-	
-	
-	
+
 	var result = []
 
-	rooms = document.getElementsByClassName("js-rt-block-row")
+	let rooms = document.getElementsByClassName("js-rt-block-row")
 	if (rooms.length > 0) {
-		
-		prop_name = document.title.split(" –")[0].replaceAll(",","")
-		prop_url = document.URL
-		prop_reviewscore = 0.0
-		prop_limitedsupply_booked = 0
-		
-		reviewscore = document.querySelector( "div[data-testid='review-score-component']" ) 
+		let prop_name = document.title.split(" –")[0].replaceAll(",","")
+		let prop_url = document.URL
+		let prop_reviewscore = 0.0
+		let prop_limitedsupply_booked = 0
+
+		let reviewscore = document.querySelector( "div[data-testid='review-score-component']" )
 		if (reviewscore != null) {
 			prop_reviewscore = parseFloat( reviewscore.firstChild.textContent.split("Scored")[0] )
 		}
 
-		data_similar = document.querySelectorAll("[data-similar-unavailable]")
+		let data_similar = document.querySelectorAll("[data-similar-unavailable]")
 		if (data_similar.length > 0) {
 			prop_limitedsupply_booked = data_similar[0].textContent.trim().replaceAll("\n","")
 		}
-		
-		
-		room_name = ""
-		room_id = 0
-		room_sqm = 0
 
-		room_beds = 0
-		room_beds_single = 0
-		room_beds_double = 0
 
-		room_scarcity = 0
-		
-		
-		room_details = null
-		
-		
+		let room_name = ""
+		let room_id = 0
+		let room_sqm = 0
+
+		let room_beds = 0
+		let room_beds_single = 0
+		let room_beds_double = 0
+
+		let room_scarcity = 0
+
+		let room_details = null
 		for (let room of rooms) {
-			
+
 			if (room_details == null) { // set the first row of room types as details
 				room_details = room
 			}
-			
-			
+
 			// Name and details
-			id = room_details.querySelector("a[data-room-id]")
+			let id = room_details.querySelector("a[data-room-id]")
 			if (id != null) {
-				room_name = id.textContent.replaceAll("\n","") 
+				room_name = id.textContent.replaceAll("\n","")
 				room_id = id.attributes["data-room-id"].textContent
 				ykAlert("Room: " + room_name, 6)
-			}  
+			}
 
-			scarce = room_details.querySelector("span.top_scarcity")
+			let scarce = room_details.querySelector("span.top_scarcity")
 			if (scarce != null) {
 				room_scarcity = parseInt( scarce.textContent.trim().replace(/\D/g, '') )
 			} else {
 				room_scarcity = 999
 			}
 
-			size = room_details.querySelector( "div[data-name-en='room size']" ) 
+			let size = room_details.querySelector( "div[data-name-en='room size']" )
 			if (size != null) {
 				room_sqm = parseInt( size.textContent.split(" ")[0] )
 			}
-			
-			facilities = room_details.querySelector( "div.hprt-facilities-block" )
+
+            let room_facilities = ""
+			let facilities = room_details.querySelector( "div.hprt-facilities-block" )
 			if (facilities != null) {
-				room_facilities =  facilities.textContent.replaceAll("\n\n\n","; ").replaceAll("\n","").replaceAll(",","")
-			} else {
-				room_facilities = ""
-			}			
-			
-			
+				room_facilities = facilities.textContent.replaceAll("\n\n\n","; ").replaceAll("\n","").replaceAll(",","")
+			}
+
 			// Bedrooms and BedTypes
 			let [ bed_single, bed_double, bed_twin, bed_king, bed_sofa, bed_futon, bed_pax ] = [0,0,0,0,0,0,0]
 			// let [ single, double, twin, king, sofa, futon, pax ] = [0,0,0,0,0,0,0]
 			let room_bedrooms = 0
-			
-			bedrooms = room_details.querySelectorAll( "li.bedroom_bed_type" ) // Apartment with multiple rooms
+			let bedrooms = room_details.querySelectorAll( "li.bedroom_bed_type" ) // Apartment with multiple rooms
 			if (bedrooms.length > 0 ) {
 				for ( let bedroom of bedrooms ) {
 					description = bedroom.textContent.replaceAll("\n"," ")
 					if (description.indexOf("Bedroom")>=0) {
 						room_bedrooms += 1
 					} // Living Room out
-					
+
 					ykAlert( description, 9 )
-					
-					res = decode_beds(description)
-					//[single, double, twin, king, sofa, futon, pax] = decode_beds(description)
-					
+
+					let res = decode_beds(description)
+
 					bed_single += res.single
 					bed_double += res.double
 					bed_twin += res.twin
@@ -359,24 +342,19 @@ function get_rooms(  ) {
 					bed_sofa += res.sofa
 					bed_futon += res.futon
 					bed_pax += res.pax
-					
+
 					ykAlert( "Multiple room:" + description + " " +[bed_single, bed_double, bed_twin, bed_king, bed_sofa, bed_futon, bed_pax], 6 )
-					
-					//[ bed_single, bed_double, bed_twin, bed_king, bed_sofa, bed_futon, bed_pax ] = [ bed_single+single, bed_double+double, bed_twin+twin, bed_king+king, bed_sofa+sofa, bed_futon+futon, bed_pax+pax ]
 				}
 			} else {
-			
-				bed = room_details.querySelector( "li.rt-bed-type" ) // One Room with different beds
+
+				let bed = room_details.querySelector( "li.rt-bed-type" ) // One Room with different beds
 				if (bed != null ) {
 					room_bedrooms = 1
 					description = bed.textContent.replaceAll("\n"," ")
-					
-					ykAlert( description, 9 )
-					
-					res = decode_beds(description)
-					// [single, double, twin, king, sofa, futon, pax] = decode_beds(description)
 
-					
+					ykAlert( description, 9 )
+					let res = decode_beds(description)
+
 					bed_single += res.single
 					bed_double += res.double
 					bed_twin += res.twin
@@ -386,54 +364,38 @@ function get_rooms(  ) {
 					bed_pax += res.pax
 
 					ykAlert( "Single room:" + description + [bed_single, bed_double, bed_twin, bed_king, bed_sofa, bed_futon, bed_pax], 6 )
-					
-					//bed_single += single
-					//bed_double += double
-					//bed_twin += twin
-					//bed_king += king
-					//bed_sofa += sofa
-					//bed_futon += futon
-					//bed_pax += pax
-					
-					//[ bed_single, bed_double, bed_twin, bed_king, bed_sofa, bed_futon, bed_pax ] = [ bed_single+single, bed_double+double, bed_twin+twin, bed_king+king, bed_sofa+sofa, bed_futon+futon, bed_pax+pax ]
 				}
 			}
-			
 			if (room_bedrooms == 0) {
 				room_bedrooms = 1
 			}
-			
 			// Number of guests
-					
-			room_guests = parseInt( room.querySelector( "span.bui-u-sr-only" ).textContent.replace(/\D/g, '') )  // "Max Persons: 2"
-			
-			
+			let room_guests = parseInt( room.querySelector( "span.bui-u-sr-only" ).textContent.replace(/\D/g, '') ) // "Max Persons: 2"
+
 			// Pricing
-			
-			room_price = 0
-			room_totprice = 0
-			
-			price = room.querySelector( "div.bui-price-display__value" )
+			let room_price = 0
+			let room_totprice = 0
+
+			let price = room.querySelector( "div.bui-price-display__value" )
 			if (price != null) {
 				if (room_price_currency == "") {
 					room_price_currency = price.textContent.trim().replaceAll(",","").replace(/\w/g, '')
 				}
-				room_totprice = parseFloat( price.textContent.replace(/\D/g, '')  )
+				room_totprice = parseFloat( price.textContent.replace(/\D/g, '') )
 				room_price = room_totprice / dt_length
 			} else {
 				ykAlert( " No room pricing found", -1)
 			}
-			
-			original = room.querySelector( "div.bui-price-display__original" )
+
+            let room_price_original = room_price
+            let original = room.querySelector( "div.bui-price-display__original" )
 			if (original != null) {
 				room_price_original = parseFloat( original.attributes["data-strikethrough-value"].textContent )
-			} else {
-				room_price_original = room_price
 			}
-			
-			room_tax = 0
-			room_tottax = 0
-			tax = room.querySelector( "div.prd-taxes-and-fees-under-price" )
+
+            let room_tax = 0
+			let room_tottax = 0
+			let tax = room.querySelector( "div.prd-taxes-and-fees-under-price" )
 			if (tax != null) {
 				if ( tax.textContent.indexOf("Includes") >= 0 ){
 					room_tax = 0
@@ -441,23 +403,20 @@ function get_rooms(  ) {
 					room_tottax = parseFloat( tax.attributes["data-excl-charges-raw"].textContent )
 					room_tax = room_tottax / dt_length
 				}
-			}  
+			}
 
 			// Discounts
-			
-			discounts = room.querySelectorAll("span[data-bui-component='Popover']")
-			room_discountpct = 0.0
-			room_deal = ""
-			room_credits = 0
-			
+			let discounts = room.querySelectorAll("span[data-bui-component='Popover']")
+			let room_discountpct = 0.0
+			let room_deal = ""
+			let room_credits = 0
 			if (discounts.length > 0) {
-				
-				for (let discount of discounts) 
+				for (let discount of discounts)
 				{
 					if ("aria-label" in discount.attributes) {
 						description = discount.attributes["aria-label"].textContent.replace("..", "")
 					} else description = discount.textContent.trim()
-					
+
 					if (description.indexOf("multiple deals and benefits") >= 0) {
 						room_discountpct = parseFloat( description.split("% off")[0] )
 					} else if (description.indexOf("Early Booker Deal") >= 0) {
@@ -469,46 +428,27 @@ function get_rooms(  ) {
 					}
 				}
 			}
-			
-			/*
-			bfast = room.querySelector( "svg.-streamline-food_coffee" )
-			if (bfast != null) {
-				
-				bfasttext = bfast.parentNode.parentNode.textContent.trim()
-				if ( bfasttext.indexOf("included") > 0) {
-					room_bfast = true
-					room_bfastpricepax = 0
-				} else if ( bfasttext.indexOf("¥") > 0) {
-					room_bfast = false
-					room_bfastpricepax = parseFloat( bfasttext.replace(/\D/g, '') )
-					//room_bfastpricepax = parseFloat( bfasttext.split("¥")[1].replaceAll(",","") )
-				}
-			} else {
-				room_bfast = false
-				room_bfastpricepax = 0
-			}*/
-			
+
 			// Conditions
-			
-			conditions = room.querySelectorAll( "li.bui-list__item" )
-			room_remaining = 999
-			room_reschedule = false
-			room_refundable = false
-			room_refundablewindow = -1
-			room_freecancel = false
-			room_cancelby = 0
-			room_cancelwindow = -1
-			room_paynothing = false
-			room_paynothingby = 0
-			room_paynothingwindow = -1
-			room_geniusdiscount = 0
-			room_prepayment = true
-			room_bfast = false
-			room_bfastpricepax = 0
-			
+			let conditions = room.querySelectorAll( "li.bui-list__item" )
+			let room_remaining = 999
+			let room_reschedule = false
+			let room_refundable = false
+			let room_refundablewindow = -1
+			let room_freecancel = false
+			let room_cancelby = 0
+			let room_cancelwindow = -1
+			let room_paynothing = false
+			let room_paynothingby = 0
+			let room_paynothingwindow = -1
+			let room_geniusdiscount = 0
+			let room_prepayment = true
+			let room_bfast = false
+			let room_bfastpricepax = 0
+
 			for (let condition of conditions) {
 				description = condition.textContent.trim()
-				
+
 				if (description.indexOf("reschedule") >= 0) {
 					room_reschedule = true
 				} else if (description.indexOf("Non-refundable") >= 0) {
@@ -522,16 +462,16 @@ function get_rooms(  ) {
 				} else if (description.indexOf("Free cancellation") >= 0) {
 					room_refundable = true
 					room_freecancel = true
-					room_cancelby =  decode_bookingdate ( description.split("before ")[1] )
+					room_cancelby = decode_bookingdate ( description.split("before ")[1] )
 					room_cancelwindow = day_diff( dt_start, room_cancelby )
 				} else if (description.indexOf("Pay nothing until") >= 0) {
 					room_refundable = true
 					room_paynothing = true
-					room_paynothingby =  decode_bookingdate ( description.split("until ")[1] )
+					room_paynothingby = decode_bookingdate ( description.split("until ")[1] )
 					room_paynothingwindow = day_diff( dt_start, room_paynothingby )
 				} else if (description.indexOf("No prepayment needed") >= 0) {
 					room_paynothing = true
-					roon_paynothingby = dt_start
+					room_paynothingby = dt_start
 					room_paynothingwindow = 0
 					room_prepayment = false
 					room_refundable = true
@@ -540,54 +480,30 @@ function get_rooms(  ) {
 					if (!room_bfast) {
 						room_bfastpricepax = parseFloat( description.replace(/\D/g, '') )
 					}
-					
 				}
-				
-				if (room_refundable) { 
-					room_refundablewindow = Math.min( 
-						(room_cancelwindow<0)?100:room_cancelwindow , 
-						(room_paynothingwindow<0)?100:room_paynothingwindow	
+
+				if (room_refundable) {
+					room_refundablewindow = Math.min(
+						(room_cancelwindow<0)?100:room_cancelwindow ,
+						(room_paynothingwindow<0)?100:room_paynothingwindow
 						)
 				}
-				
 			}
-			
-			/*
-			remaining = room.querySelector( "li.bui-text--color-destructive-dark > div > div.bui-list__description")
-			if (remaining != null) {
-				room_remaining = parseInt( remaining.textContent.replace(/\D/g, '') )
-			} else {
-				room_remaining = 999
-			}
-			
-			
-			reshedule = room.querySelector( "li.bui-text--color-constructive > div > div.bui-list__description")
-			if ( (reshedule != null) && (reshedule.textContent.indexOf("reschedule")>0) ){
-				room_reschedule = true
-			} else {
-				room_reschedule = false
-			}
-			*/
-						
-			
-			
-			
-			
-			room_kitchen = room_details.querySelector( "span[data-name-en='Kitchen']" ) != null		
-			room_kitchenprivate = room_details.querySelector( "svg.-streamline-oven" ) != null		
-			room_ensuite = room_details.querySelector( "svg.-streamline-shower" ) != null		
-			room_washingmachine = room_details.querySelector( "span[data-name-en='Washing machine']" ) != null		
-			room_tumbledryer = room_details.querySelector( "span[data-name-en='Tumble dryer (machine)']" ) != null	
-			room_view = room_details.querySelector( "svg.-streamline-mountains" ) != null
-			room_balcony = room_details.querySelector( "svg.-streamline-resort" ) != null
-			
-			
-			result.push( 
-			[  prop_name, room_name, room_sqm,  room_guests, room_price,  dt_start, room_discountpct, room_geniusdiscount, room_deal, room_credits, room_bfast, room_bfastpricepax, room_minimumdays, room_remaining, room_reschedule, room_refundable, room_refundablewindow, room_freecancel, room_cancelwindow, room_paynothing, room_paynothingwindow, room_bedrooms, bed_single, bed_double, bed_twin, bed_king, bed_sofa, bed_futon, bed_pax, room_scarcity, room_tax, room_kitchenprivate, room_kitchen, room_ensuite, room_washingmachine, room_tumbledryer, room_view, room_balcony, room_id,  prop_reviewscore, prop_limitedsupply_booked, room_price_currency, dt_sample, search_adult, search_room, dt_length, genius_user, genius_level, room_totprice, room_tottax, dt_end, room_facilities, room_cancelby,  room_paynothingby,  prop_url,
+
+			let room_kitchen = room_details.querySelector( "span[data-name-en='Kitchen']" ) != null
+			let room_kitchenprivate = room_details.querySelector( "svg.-streamline-oven" ) != null
+			let room_ensuite = room_details.querySelector( "svg.-streamline-shower" ) != null
+			let room_washingmachine = room_details.querySelector( "span[data-name-en='Washing machine']" ) != null
+			let room_tumbledryer = room_details.querySelector( "span[data-name-en='Tumble dryer (machine)']" ) != null
+			let room_view = room_details.querySelector( "svg.-streamline-mountains" ) != null
+			let room_balcony = room_details.querySelector( "svg.-streamline-resort" ) != null
+
+			result.push(
+			[ prop_name, room_name, room_sqm, room_guests, room_price, dt_start, room_discountpct, room_geniusdiscount, room_deal, room_credits, room_bfast, room_bfastpricepax, room_minimumdays, room_remaining, room_reschedule, room_refundable, room_refundablewindow, room_freecancel, room_cancelwindow, room_paynothing, room_paynothingwindow, room_bedrooms, bed_single, bed_double, bed_twin, bed_king, bed_sofa, bed_futon, bed_pax, room_scarcity, room_tax, room_kitchenprivate, room_kitchen, room_ensuite, room_washingmachine, room_tumbledryer, room_view, room_balcony, room_id, prop_reviewscore, prop_limitedsupply_booked, room_price_currency, dt_sample, search_adult, search_room, dt_length, genius_user, genius_level, room_totprice, room_tottax, dt_end, room_facilities, room_cancelby, room_paynothingby, prop_url,
 			] )
-			
+
 			ykAlert("Room: " + room_name + " - price: " + room_price_currency + " " + room_price.toLocaleString() + " (" + room_discountpct + "%) pax: (" + room_guests + "," + bed_pax + ") refunddays: " + room_refundablewindow , 2)
-			
+
 			if (room.classList.contains("hprt-table-last-row")) {
 				// Reset the carry forward for the room class
 				room_name = ""
@@ -596,96 +512,85 @@ function get_rooms(  ) {
 				room_beds = 0
 				room_beds_single = 0
 				room_beds_double = 0
-				room_scarcity = 0	
+				room_scarcity = 0
 				room_details = null
 			}
 		}
-		
+
 		ykAlert("Found " + result.length + " rooms", 1 )
 	} else {
 		ykAlert("No Rooms Found", -1)
 	}
-	
+
 	return result
 }
 
 function decode_bookingdate( dt ) {
 	// looks like 'Fri 14 Feb'
-	
-	today = new Date()
-	parsed = new Date( Date.parse( dt + ' ' + today.getFullYear().toString() ) )
-	
+	let today = new Date()
+	let parsed = new Date( Date.parse( dt + ' ' + today.getFullYear().toString() ) )
+
 	if (parsed < today) {
-		parsed.setFullYear( parsed.getFullYear() +1 )		
+		parsed.setFullYear( parsed.getFullYear() +1 )
 	}
-	
 	return parsed
 }
 
 function day_diff( a, b ) {
+    let c = 0
 	if (b > a) {
 		c = b-a
 	} else {
 		c = a-b
 	}
-	
 	return (new Date( c ).getDate()) - 1
 }
 
 function get_dates( step=0 )
 {
 	step += 1
-	
-	field_starts = document.querySelectorAll( '[data-testid="date-display-field-start"]')
+
+    let dt_start = 0
+
+	let field_starts = document.querySelectorAll( '[data-testid="date-display-field-start"]')
 	if (field_starts.length > 1) {
-		dt_start =  field_starts[1] 
+		dt_start = field_starts[1]
 	} else {
 		ykAlert("Could not find 'field start' widget", -1)
 	}
-	
 	if (step==1) {
-		field_start.click()
+		field_starts.click()
 		setTimeout( function() { get_dates( step ) }, 1500 )
 		// call again
-		
-		return null	
+
+		return null
 	}
-	
-	cells  = document.querySelectorAll( 'span[data-date]')
+
+	let cells = document.querySelectorAll( 'span[data-date]')
 	if (cells.length > 0) {
-		roll_amount = 0
-		roll_date = ''
-		page_amount = 0
-		
-		page_date = document.querySelector( 'span.e4862a187f') // highlighted date
-		
-		
-		
+		let roll_amount = 0
+		let roll_date = ''
+		let page_amount = 0
+
+		let page_date = document.querySelector( 'span.e4862a187f') // highlighted date
 	}
-		
-	
 	return cells
 }
 
 function scrape_csv() 
 {
 	ykAlert("Scraping")
-	
-	result = get_rooms( )
-	
-	result_csv = toCSV( result, '\t' )
-	//copyToClipboard( result_csv )
-	
-	//if (localStorage.bookingcomlabels == null) {
-		labels = "prop_name, room_name, room_sqm,  room_guests, room_price,  dt_start, room_discountpct, room_geniusdiscount, room_deal, room_credits, room_bfast, room_bfastpricepax, room_minimumdays, room_remaining, room_reschedule, room_refundable, room_refundablewindow, room_freecancel, room_cancelwindow, room_paynothing, room_paynothingwindow, room_bedrooms, bed_single, bed_double, bed_twin, bed_king, bed_sofa, bed_futon, bed_pax, room_scarcity, room_tax, room_kitchenprivate, room_kitchen, room_ensuite, room_washingmachine, room_tumbledryer, room_view, room_balcony, room_id,  prop_reviewscore, prop_limitedsupply_booked, room_price_currency, dt_sample, search_adult, search_room, dt_length, genius_user, genius_level, room_totprice, room_tottax, dt_end, room_facilities, room_cancelby,  room_paynothingby,  prop_url".replaceAll(",","\t")
-		localStorage.bookingcomlabels = labels
-	//}
-	
-	stored = localStorage.bookingcom
+
+	let result = get_rooms( )
+
+	let result_csv = toCSV( result, '\t' )
+
+	let labels = "prop_name, room_name, room_sqm,  room_guests, room_price,  dt_start, room_discountpct, room_geniusdiscount, room_deal, room_credits, room_bfast, room_bfastpricepax, room_minimumdays, room_remaining, room_reschedule, room_refundable, room_refundablewindow, room_freecancel, room_cancelwindow, room_paynothing, room_paynothingwindow, room_bedrooms, bed_single, bed_double, bed_twin, bed_king, bed_sofa, bed_futon, bed_pax, room_scarcity, room_tax, room_kitchenprivate, room_kitchen, room_ensuite, room_washingmachine, room_tumbledryer, room_view, room_balcony, room_id,  prop_reviewscore, prop_limitedsupply_booked, room_price_currency, dt_sample, search_adult, search_room, dt_length, genius_user, genius_level, room_totprice, room_tottax, dt_end, room_facilities, room_cancelby,  room_paynothingby,  prop_url".replaceAll(",","\t")
+	localStorage.bookingcomlabels = labels
+
+    let stored = localStorage.bookingcom
 	stored = stored + "\n" + result_csv
 	localStorage.bookingcom = stored
-	//copyToClipboard( stored )
-	
 }
 
 function setup() {
@@ -696,3 +601,6 @@ function setup() {
 
 setup()
 
+var myMonkeys = window.myMonkeys = {};
+
+myMonkeys.setup = function() { setup() }
