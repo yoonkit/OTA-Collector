@@ -1,18 +1,16 @@
 // ==UserScript==
-// @name         Scraper for booking.com
+// @name         Data Collector for booking.com
 // @namespace    http://tampermonkey.net/
 // @version      0.12
-// @description  Scrapes room info for the searched dates
+// @description  Extracts room info for the searched dates
 // @author       Yoon-Kit Yong
 // @match        https://booking.com/*
-// @icon         https://www.google.com/s2/favicons?sz=64&domain=whatsapp.com
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=booking.com
 // @grant        none
 // @run-at       document-idle
 // @updateURL    https://raw.githubusercontent.com/yoonkit/OTA-Collector/main/BookingDotCom.js
 // @downloadURL  https://raw.githubusercontent.com/yoonkit/OTA-Collector/main/BookingDotCom.js
 // ==/UserScript==
-
-
 
 var verbosity = 3;
 document.verbosity = verbosity;
@@ -42,7 +40,7 @@ function ykAlert( msg, type=0 )
     return 0;
 }
 
-ykAlert('booking.com Scrape loading ...', 2)
+ykAlert('booking.com Extractor loading ...', 2)
 
 
 function copyToClipboard(text) {
@@ -74,7 +72,7 @@ function create_UI() {
 	btncsv.id = "findRooms"
 	btncsv.onclick = function()
 	{
-		scrape_csv()
+		extract_csv()
 		btnUpdate.click()
 	}
 
@@ -577,7 +575,7 @@ function get_dates( step=0 )
 	return cells
 }
 
-function scrape_csv() 
+function extract_csv()
 {
 	ykAlert("Scraping")
 
@@ -596,7 +594,7 @@ function scrape_csv()
 function setup() {
 	create_UI()
 	if (localStorage.bookingcom == null) localStorage.bookingcom = ""
-	ykAlert("Welcome to booking.com collector",1)
+	ykAlert("Welcome to booking.com Data collector",1)
 }
 
 setup()
