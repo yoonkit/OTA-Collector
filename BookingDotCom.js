@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         Data Collector for booking.com
 // @namespace    http://tampermonkey.net/
-// @version      0.13
+// @version      0.14
 // @description  Extracts room info for the searched dates
 // @author       Yoon-Kit Yong
-// @match        https://www.booking.com/*
+// @match        https://www.booking.com/hotel/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=booking.com
 // @grant        none
 // @run-at       document-idle
