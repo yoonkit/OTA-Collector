@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scraper for booking.com
 // @namespace    http://tampermonkey.net/
-// @version      0.10
+// @version      0.11
 // @description  Scrapes room info for the searched dates
 // @author       Yoon-Kit Yong
 // @match        https://booking.com/hotel/*
