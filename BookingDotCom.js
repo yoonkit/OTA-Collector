@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         Data Collector for booking.com
 // @namespace    http://tampermonkey.net/
-// @version      0.12
+// @version      0.13
 // @description  Extracts room info for the searched dates
 // @author       Yoon-Kit Yong
-// @match        https://booking.com/*
+// @match        https://www.booking.com/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=booking.com
 // @grant        none
 // @run-at       document-idle
@@ -12,10 +12,12 @@
 // @downloadURL  https://raw.githubusercontent.com/yoonkit/OTA-Collector/main/BookingDotCom.js
 // ==/UserScript==
 
+
+
 var verbosity = 3;
 document.verbosity = verbosity;
 
-function ykAlert( msg, type=0 )
+function ykAlert( msg, type )
 {
     /* Messages for debugging with varying degrees of reporting methods
      *     -1 : Boldify
@@ -26,13 +28,16 @@ function ykAlert( msg, type=0 )
      *     10 : window.alert (very annoying)
      * 230728 yky Created
 	 * 230820 yky Modified - verbosity, caller function name, indent
+	 * 240502 yky Modified - caller crash on main call
      */
+    if (type == null) type = 1
     if (type < 0) console.log( '*** ' + msg + ' ***' )
     else if (type == 10) window.alert( msg )
     else if (type <= document.verbosity)
     {
         let fname = ""
-        let caller = ykAlert.caller
+        let caller = null
+        if (ykAlert.hasOwnProperty("caller")) caller = ykAlert.caller
         if (caller != null) fname = ' (' + caller.name + ') '
         let spacer = "-".repeat(type*2) + ": "
         console.log( spacer + msg + fname );
@@ -67,6 +72,9 @@ function create_UI() {
 
 	ykAlert("Creating UI for booking.com collector",3)
 
+    var div = document.createElement("div")
+    div.style = "font-size:12px;"
+
 	var btncsv = document.createElement("Button");
 	btncsv.innerHTML = "Find Rooms";
 	btncsv.id = "findRooms"
@@ -76,27 +84,39 @@ function create_UI() {
 		btnUpdate.click()
 	}
 
-	let ava = document.getElementById("availability_target")
-	ava.appendChild(btncsv)
+	div.appendChild(btncsv)
+
+    var cbDiv = document.createElement("div")
+    var cbIncludeHeader = document.createElement("INPUT")
+    var cbText = document.createTextNode("Include Headers")
+    cbIncludeHeader.setAttribute("type", "checkbox")
+    cbIncludeHeader.id = "includeHeader"
+    cbDiv.appendChild(cbIncludeHeader)
+    cbDiv.appendChild(cbText)
+	div.appendChild(cbDiv)
+
+    var btncopy = document.createElement("Button");
+	btncopy.innerHTML = "Copy to Clipboard";
+	btncopy.onclick = function() {
+        let content = localStorage.bookingcom
+        if (cbIncludeHeader.checked) {
+            content = localStorage.bookingcomlabels + "\n" + content;
+        }
+		copyToClipboard( content )
+		ykAlert("Copied " + content.split("\n").length + " room details to clipboard")
+	}
+	div.appendChild(btncopy)
 
 	var btnclear = document.createElement("Button");
 	btnclear.innerHTML = "Clear Memory";
 	btnclear.id = "clearMemory"
 	btnclear.onclick = function()
 	{
-		localStorage.bookingcom = localStorage.bookingcomlabels;
+		localStorage.bookingcom = ""
 		ykAlert("Cleared Memory")
 		btnUpdate.click()
 	}
-	ava.appendChild(btnclear)
-
-	var btncopy = document.createElement("Button");
-	btncopy.innerHTML = "Copy to Clipboard";
-	btncopy.onclick = function() {
-		copyToClipboard( localStorage.bookingcom )
-		ykAlert("Copied " + localStorage.bookingcom.split("\n").length + " room details to clipboard") 
-	}
-	ava.appendChild(btncopy)
+	div.appendChild(btnclear)
 
 	var btnUpdate = document.createElement("Button");
 	btnUpdate.innerHTML = "Lines: ";
@@ -108,8 +128,11 @@ function create_UI() {
 		btnUpdate.textContent = "Num: " + lines
 	}
 	btnUpdate.click()
+	div.appendChild(btnUpdate)
 
-	ava.appendChild(btnUpdate)
+	let ava = document.getElementById("availability_target")
+    ava.appendChild(div)
+
 
 }
 
@@ -580,14 +603,14 @@ function extract_csv()
 	ykAlert("Scraping")
 
 	let result = get_rooms( )
-
 	let result_csv = toCSV( result, '\t' )
 
 	let labels = "prop_name, room_name, room_sqm,  room_guests, room_price,  dt_start, room_discountpct, room_geniusdiscount, room_deal, room_credits, room_bfast, room_bfastpricepax, room_minimumdays, room_remaining, room_reschedule, room_refundable, room_refundablewindow, room_freecancel, room_cancelwindow, room_paynothing, room_paynothingwindow, room_bedrooms, bed_single, bed_double, bed_twin, bed_king, bed_sofa, bed_futon, bed_pax, room_scarcity, room_tax, room_kitchenprivate, room_kitchen, room_ensuite, room_washingmachine, room_tumbledryer, room_view, room_balcony, room_id,  prop_reviewscore, prop_limitedsupply_booked, room_price_currency, dt_sample, search_adult, search_room, dt_length, genius_user, genius_level, room_totprice, room_tottax, dt_end, room_facilities, room_cancelby,  room_paynothingby,  prop_url".replaceAll(",","\t")
 	localStorage.bookingcomlabels = labels
 
     let stored = localStorage.bookingcom
-	stored = stored + "\n" + result_csv
+    if (stored == "") stored = result_csv
+    else stored = stored + '\n' + result_csv
 	localStorage.bookingcom = stored
 }
 
