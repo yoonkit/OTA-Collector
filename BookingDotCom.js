@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Scraper for booking.com
 // @namespace    http://tampermonkey.net/
-// @version      0.1
+// @version      0.10
 // @description  Scrapes room info for the searched dates
 // @author       Yoon-Kit Yong
 // @match        https://booking.com/hotel/*
@@ -9,8 +9,8 @@
 // @grant        none
 // @require      https://code.jquery.com/jquery-3.5.1.min.js#sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=
 // @run-at       document-idle
-// @updateURL    https://raw.githubusercontent.com/yoonkit/booking.js
-// @downloadURL  https://raw.githubusercontent.com/yoonkit/booking.js
+// @updateURL    https://raw.githubusercontent.com/yoonkit/OTA-Collector/main/BookingDotCom.js
+// @downloadURL  https://raw.githubusercontent.com/yoonkit/OTA-Collector/main/BookingDotCom.js
 // ==/UserScript==
 
 
