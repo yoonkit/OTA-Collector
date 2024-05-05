@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Data Collector for booking.com
 // @namespace    http://tampermonkey.net/
-// @version      0.16
+// @version      0.17
 // @description  Extracts room info for the searched dates
 // @author       Yoon-Kit Yong
 // @match        https://www.booking.com/hotel/*
@@ -67,6 +67,27 @@ function toCSV(inputArray, separator = ",") {
 	return mainCSV
 }
 
+function getElementByTextContent(str, partial, parentNode, onlyLast) 
+{ // From: https://stackoverflow.com/questions/46086917/document-queryselector-via-textcontent
+  var filter = function(elem) {
+    var isLast = onlyLast ? !elem.children.length : true;
+    var contains = partial ? elem.textContent.indexOf(str) > -1 :
+      elem.textContent === str;
+    if (isLast && contains)
+      return NodeFilter.FILTER_ACCEPT;
+  };
+  filter.acceptNode = filter; // for IE
+  var treeWalker = document.createTreeWalker(
+    parentNode || document.documentElement,
+    NodeFilter.SHOW_ELEMENT, {
+      acceptNode: filter
+    },
+    false
+  );
+  var nodeList = [];
+  while (treeWalker.nextNode()) nodeList.push(treeWalker.currentNode);
+  return nodeList;
+}
 
 function create_UI() {
 
@@ -94,6 +115,20 @@ function create_UI() {
     cbDiv.appendChild(cbIncludeHeader)
     cbDiv.appendChild(cbText)
 	div.appendChild(cbDiv)
+
+    var cbVPN = document.createElement("div")
+    var cbIsVPN = document.createElement("INPUT")
+    var cbVPNText = document.createTextNode("VPN enabled")
+    cbIsVPN.setAttribute("type", "checkbox")
+    cbIsVPN.id = "cbIsVPN"
+	cbIsVPN.onclick = function()
+	{
+		localStorage.bookingcomVPN = cbIsVPN.checked
+	}
+    cbVPN.appendChild(cbIsVPN)
+    cbVPN.appendChild(cbVPNText)
+	div.appendChild(cbVPN)
+	cbIsVPN.checked = localStorage.bookingcomVPN
 
     var btncopy = document.createElement("Button");
 	btncopy.innerHTML = "Copy to Clipboard";
@@ -208,6 +243,13 @@ function get_rooms( ) {
 
 	let dt_sample = new Date()
     let description = ""
+	
+	// VPN
+	let prop_vpn = false
+	let vpn = document.getElementById("cbisVPN")
+	if (vpn != null) {
+		prop_vpn = vpn.checked
+	}
 
 	// Login Details
 	let genius_user = "anon"
@@ -295,7 +337,25 @@ function get_rooms( ) {
 		if (data_similar.length > 0) {
 			prop_limitedsupply_booked = data_similar[0].textContent.trim().replaceAll("\n","")
 		}
-
+		
+		let data_surrounding = document.querySelector("[id='surroundings_block']")
+		let prop_liftdistance = 0
+		if (data_surrounding != null) {
+			ski_lifts = getElementByTextContent('Ski lifts', true, data_surrounding)
+			if (ski_lifts.length > 0) {
+				let ski_lift = ski_lifts[ ski_lifts.length-1 ]
+				let ski_lift_parent = ski_lift.parentElement.parentElement.parentElement
+				let ski_distance = ski_lift_parent.children[1].getElementsByClassName("a53cbfa6de")
+				if (ski_distance.length > 0) {
+					let distance = ski_distance[0].textContent.trim()
+					if (distance.indexOf("km") > 0)  unit = 1000 
+					else unit = 1 ;
+					distance = parseFloat( "0"+distance.replace(/\D/g, '') )
+					prop_liftdistance = distance * unit
+					
+				}
+			}
+		}
 
 		let room_name = ""
 		let room_id = 0
@@ -536,7 +596,7 @@ function get_rooms( ) {
 			let room_balcony = room_details.querySelector( "svg.-streamline-resort" ) != null
 
 			result.push(
-			[ prop_name, room_name, room_sqm, room_guests, room_price, dt_start, room_discountpct, room_geniusdiscount, room_deal, room_credits, room_bfast, room_bfastpricepax, room_minimumdays, room_remaining, room_reschedule, room_refundable, room_refundablewindow, room_freecancel, room_cancelwindow, room_paynothing, room_paynothingwindow, room_bedrooms, bed_single, bed_double, bed_king, bed_sofa, bed_futon, bed_pax, room_scarcity, room_tax, room_partneroffer, room_kitchenprivate, room_kitchen, room_ensuite, room_washingmachine, room_tumbledryer, room_view, room_balcony, room_id, prop_reviewscore, prop_limitedsupply_booked, room_price_currency, dt_sample, search_adult, search_room, dt_length, genius_user, genius_level, room_totprice, room_tottax, dt_end, room_facilities, room_cancelby, room_paynothingby, prop_url,
+			[ prop_name, room_name, room_sqm, room_guests, room_price, dt_start, room_discountpct, room_geniusdiscount, room_deal, room_credits, room_bfast, room_bfastpricepax, room_minimumdays, room_remaining, room_reschedule, room_refundable, room_refundablewindow, room_freecancel, room_cancelwindow, room_paynothing, room_paynothingwindow, room_bedrooms, bed_single, bed_double, bed_king, bed_sofa, bed_futon, bed_pax, room_scarcity, room_tax, room_partneroffer, room_kitchenprivate, room_kitchen, room_ensuite, room_washingmachine, room_tumbledryer, room_view, room_balcony, room_id, prop_reviewscore, prop_limitedsupply_booked, room_price_currency, dt_sample, search_adult, search_room, dt_length, genius_user, genius_level, prop_vpn, prop_liftdistance, room_totprice, room_tottax, dt_end, room_facilities, room_cancelby, room_paynothingby, prop_url,
 			] )
 
 			ykAlert("Room: " + room_name + " - price: " + room_price_currency + " " + room_price.toLocaleString() + " (" + room_discountpct + "%) pax: (" + room_guests + "," + bed_pax + ") refunddays: " + room_refundablewindow , 2)
@@ -612,7 +672,7 @@ function extract_csv()
 	let result = get_rooms( )
 	let result_csv = toCSV( result, '\t' )
 
-	let labels = "prop_name, room_name, room_sqm,  room_guests, room_price,  dt_start, room_discountpct, room_geniusdiscount, room_deal, room_credits, room_bfast, room_bfastpricepax, room_minimumdays, room_remaining, room_reschedule, room_refundable, room_refundablewindow, room_freecancel, room_cancelwindow, room_paynothing, room_paynothingwindow, room_bedrooms, bed_single, bed_double, bed_king, bed_sofa, bed_futon, bed_pax, room_scarcity, room_tax, room_partneroffer, room_kitchenprivate, room_kitchen, room_ensuite, room_washingmachine, room_tumbledryer, room_view, room_balcony, room_id,  prop_reviewscore, prop_limitedsupply_booked, room_price_currency, dt_sample, search_adult, search_room, dt_length, genius_user, genius_level, room_totprice, room_tottax, dt_end, room_facilities, room_cancelby,  room_paynothingby,  prop_url".replaceAll(",","\t")
+	let labels = "prop_name, room_name, room_sqm,  room_guests, room_price,  dt_start, room_discountpct, room_geniusdiscount, room_deal, room_credits, room_bfast, room_bfastpricepax, room_minimumdays, room_remaining, room_reschedule, room_refundable, room_refundablewindow, room_freecancel, room_cancelwindow, room_paynothing, room_paynothingwindow, room_bedrooms, bed_single, bed_double, bed_king, bed_sofa, bed_futon, bed_pax, room_scarcity, room_tax, room_partneroffer, room_kitchenprivate, room_kitchen, room_ensuite, room_washingmachine, room_tumbledryer, room_view, room_balcony, room_id,  prop_reviewscore, prop_limitedsupply_booked, room_price_currency, dt_sample, search_adult, search_room, dt_length, genius_user, genius_level, prop_vpn, prop_liftdistance, room_totprice, room_tottax, dt_end, room_facilities, room_cancelby,  room_paynothingby,  prop_url".replaceAll(",","\t")
 	localStorage.bookingcomlabels = labels
 
     let stored = localStorage.bookingcom
@@ -624,6 +684,7 @@ function extract_csv()
 function setup() {
 	create_UI()
 	if (localStorage.bookingcom == null) localStorage.bookingcom = ""
+	if (localStorage.bookingcomVPN == null) localStorage.bookingcomVPN = false
 	ykAlert("Welcome to booking.com Data collector",1)
 }
 
