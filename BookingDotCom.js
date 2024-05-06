@@ -109,26 +109,12 @@ function create_UI() {
 
     var cbDiv = document.createElement("div")
     var cbIncludeHeader = document.createElement("INPUT")
-    var cbText = document.createTextNode("Include Headers")
+    var cbText = document.createTextNode("  Include Headers")
     cbIncludeHeader.setAttribute("type", "checkbox")
     cbIncludeHeader.id = "includeHeader"
     cbDiv.appendChild(cbIncludeHeader)
     cbDiv.appendChild(cbText)
 	div.appendChild(cbDiv)
-
-    var cbVPN = document.createElement("div")
-    var cbIsVPN = document.createElement("INPUT")
-    var cbVPNText = document.createTextNode("VPN enabled")
-    cbIsVPN.setAttribute("type", "checkbox")
-    cbIsVPN.id = "cbIsVPN"
-	cbIsVPN.onclick = function()
-	{
-		localStorage.bookingcomVPN = cbIsVPN.checked
-	}
-    cbVPN.appendChild(cbIsVPN)
-    cbVPN.appendChild(cbVPNText)
-	div.appendChild(cbVPN)
-	cbIsVPN.checked = localStorage.bookingcomVPN
 
     var btncopy = document.createElement("Button");
 	btncopy.innerHTML = "Copy to Clipboard";
@@ -168,7 +154,23 @@ function create_UI() {
 	let ava = document.getElementById("availability_target")
     ava.appendChild(div)
 
-
+    var dVPN = document.createElement("div")
+    var cbIsVPN = document.createElement("INPUT")
+    var cbVPNText = document.createTextNode("  VPN enabled")
+    cbIsVPN.setAttribute("type", "checkbox")
+    cbIsVPN.id = "cbIsVPN"
+	cbIsVPN.onclick = function()
+	{
+		localStorage.bookingcomVPN = cbIsVPN.checked
+		ykAlert( "VPN: " + localStorage.bookingcomVPN )
+	}
+    dVPN.appendChild(cbIsVPN)
+    dVPN.appendChild(cbVPNText)
+	div.appendChild(dVPN)
+	let checked = localStorage.bookingcomVPN
+	if (typeof(checked) == 'string') cbIsVPN.checked = (checked == 'true')
+	else if (typeof(checked) == 'boolean') cbIsVPN.checked = checked
+	else cbIsVPN.checked = checked
 }
 
 function decode_occupancy_config( occ ) {
@@ -246,7 +248,7 @@ function get_rooms( ) {
 	
 	// VPN
 	let prop_vpn = false
-	let vpn = document.getElementById("cbisVPN")
+	let vpn = document.getElementById("cbIsVPN")
 	if (vpn != null) {
 		prop_vpn = vpn.checked
 	}
