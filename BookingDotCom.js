@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Data Collector for booking.com
 // @namespace    http://tampermonkey.net/
-// @version      0.17
+// @version      0.18
 // @description  Extracts room info for the searched dates
 // @author       Yoon-Kit Yong
 // @match        https://www.booking.com/hotel/*
@@ -171,6 +171,16 @@ function create_UI() {
 	if (typeof(checked) == 'string') cbIsVPN.checked = (checked == 'true')
 	else if (typeof(checked) == 'boolean') cbIsVPN.checked = checked
 	else cbIsVPN.checked = checked
+}
+
+function date_to_yyyymmdd( dt ) {
+	if (dt instanceof Date) {
+		return dt.toISOString().slice(0,10)
+	} else if ( typeof(dt) == 'string') {
+		return dt
+	} else {
+		return ""
+	}
 }
 
 function decode_occupancy_config( occ ) {
@@ -541,6 +551,7 @@ function get_rooms( ) {
 				room_partneroffer = true
 			}
 
+
 			for (let condition of conditions) {
 				description = condition.textContent.trim()
 
@@ -596,9 +607,15 @@ function get_rooms( ) {
 			let room_tumbledryer = room_facilities.indexOf("Tumble dryer") >= 0
 			let room_view = room_details.querySelector( "svg.-streamline-mountains" ) != null
 			let room_balcony = room_details.querySelector( "svg.-streamline-resort" ) != null
+			
+			let sdt_end = date_to_yyyymmdd(dt_end)
+			let sdt_sample = date_to_yyyymmdd(dt_sample)
+			let sdt_start = date_to_yyyymmdd(dt_start)
+			let sroom_paynothingby = date_to_yyyymmdd(room_paynothingby)
+			let sroom_cancelby = date_to_yyyymmdd(room_cancelby)
 
 			result.push(
-			[ prop_name, room_name, room_sqm, room_guests, room_price, dt_start, room_discountpct, room_geniusdiscount, room_deal, room_credits, room_bfast, room_bfastpricepax, room_minimumdays, room_remaining, room_reschedule, room_refundable, room_refundablewindow, room_freecancel, room_cancelwindow, room_paynothing, room_paynothingwindow, room_bedrooms, bed_single, bed_double, bed_king, bed_sofa, bed_futon, bed_pax, room_scarcity, room_tax, room_partneroffer, room_kitchenprivate, room_kitchen, room_ensuite, room_washingmachine, room_tumbledryer, room_view, room_balcony, room_id, prop_reviewscore, prop_limitedsupply_booked, room_price_currency, dt_sample, search_adult, search_room, dt_length, genius_user, genius_level, prop_vpn, prop_liftdistance, room_totprice, room_tottax, dt_end, room_facilities, room_cancelby, room_paynothingby, prop_url,
+			[ prop_name, room_name, room_sqm, room_guests, room_price, sdt_start, room_discountpct, room_geniusdiscount, room_deal, room_credits, room_bfast, room_bfastpricepax, room_minimumdays, room_remaining, room_reschedule, room_refundable, room_refundablewindow, room_freecancel, room_cancelwindow, room_paynothing, room_paynothingwindow, room_bedrooms, bed_single, bed_double, bed_king, bed_sofa, bed_futon, bed_pax, room_scarcity, room_tax, room_partneroffer, room_kitchenprivate, room_kitchen, room_ensuite, room_washingmachine, room_tumbledryer, room_view, room_balcony, room_id, prop_reviewscore, prop_limitedsupply_booked, room_price_currency, sdt_sample, search_adult, search_room, dt_length, genius_user, genius_level, prop_vpn, prop_liftdistance, room_totprice, room_tottax, sdt_end, room_facilities, sroom_cancelby, sroom_paynothingby, prop_url,
 			] )
 
 			ykAlert("Room: " + room_name + " - price: " + room_price_currency + " " + room_price.toLocaleString() + " (" + room_discountpct + "%) pax: (" + room_guests + "," + bed_pax + ") refunddays: " + room_refundablewindow , 2)
