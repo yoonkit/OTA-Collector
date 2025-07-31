@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Data Collector for booking.com
 // @namespace    http://tampermonkey.net/
-// @version      0.18
+// @version      0.19
 // @description  Extracts room info for the searched dates
 // @author       Yoon-Kit Yong
 // @match        https://www.booking.com/hotel/*
@@ -97,7 +97,7 @@ function create_UI() {
     div.style = "font-size:12px;"
 
 	var btncsv = document.createElement("Button");
-	btncsv.innerHTML = "Find Rooms";
+	btncsv.innerHTML = "| Find Rooms |&nbsp&nbsp";
 	btncsv.id = "findRooms"
 	btncsv.onclick = function()
 	{
@@ -109,7 +109,7 @@ function create_UI() {
 
     var cbDiv = document.createElement("div")
     var cbIncludeHeader = document.createElement("INPUT")
-    var cbText = document.createTextNode("  Include Headers")
+    var cbText = document.createTextNode("  Include Headers |&nbsp&nbsp")
     cbIncludeHeader.setAttribute("type", "checkbox")
     cbIncludeHeader.id = "includeHeader"
     cbDiv.appendChild(cbIncludeHeader)
@@ -117,7 +117,7 @@ function create_UI() {
 	div.appendChild(cbDiv)
 
     var btncopy = document.createElement("Button");
-	btncopy.innerHTML = "Copy to Clipboard";
+	btncopy.innerHTML = "| Copy to Clipboard |&nbsp&nbsp";
 	btncopy.onclick = function() {
         let content = localStorage.bookingcom
         if (cbIncludeHeader.checked) {
@@ -129,7 +129,7 @@ function create_UI() {
 	div.appendChild(btncopy)
 
 	var btnclear = document.createElement("Button");
-	btnclear.innerHTML = "Clear Memory";
+	btnclear.innerHTML = "| Clear Memory |&nbsp&nbsp";
 	btnclear.id = "clearMemory"
 	btnclear.onclick = function()
 	{
@@ -151,7 +151,8 @@ function create_UI() {
 	btnUpdate.click()
 	div.appendChild(btnUpdate)
 
-	let ava = document.getElementById("availability_target")
+    // let ava = document.getElementById("availability_target")
+	let ava = document.getElementsByClassName( "hp-description" )[0] // 250731 yky "availability-target" doesnt allow clickable buttons
     ava.appendChild(div)
 
     var dVPN = document.createElement("div")
@@ -264,26 +265,37 @@ function get_rooms( ) {
 	}
 
 	// Login Details
-	let genius_user = "anon"
+	let genius_user = ""
 	let genius_level = 0
 	let login = document.querySelector('[data-testid="header-profile"]')
 	if (login != null) {
-		let description = login.textContent.substr( 1 ) // skipping the first char
+		let description = login.innerText // 250731 yky Avatar changed to just first initial. // .substr( 1 ) // skipping the first char
 		let details = description.split("Genius Level")
 
-		genius_user = details[0]
+		genius_user = details[0].split("\n")
+        if (genius_user.length > 1) { genius_user = genius_user[1] } // 250731 yky If the Avatar has the full info, skip initial
+        else { genius_user = genius_user[0] }
+
 		if (details.length>1) {	genius_level = parseInt( "0" + details[1].replace(/\D/g, '') ) }
 
 		//login_name = login.getElementsByClassName("a3332d346a")
 		//if (login_name.length>0) { genius_user = login_name[0].textContent }
 	}
 
+    if (genius_level == 0) { // 250731 yky If the width is too small, have to extract Genius level from the BUI Card.
+        bui = document.querySelector( "section.bui-card")
+        if (bui != null) {
+            level = bui.innerText.split(" rewards")[0]
+            if (level.length>1) { genius_level = parseInt( "0" + level.replace(/\D/g, '') ) }
+        }
+    }
+
 	let currency = document.querySelector('[data-testid="header-currency-picker-trigger"]')
     let room_price_currency = ""
 	if (currency != null) {
 		room_price_currency = currency.textContent
 	} else {
-		ykAlert("Could not find 'currency-picker'")
+		ykAlert("Could not find 'currency-picker'",-1)
 	}
 
 	// Search Query
@@ -342,14 +354,14 @@ function get_rooms( ) {
 
 		let reviewscore = document.querySelector( "div[data-testid='review-score-component']" )
 		if (reviewscore != null) {
-			prop_reviewscore = parseFloat( reviewscore.firstChild.textContent.split("Scored")[0] )
+			prop_reviewscore = parseFloat( reviewscore.firstChild.textContent.split("Scored")[1] ) // 250731 yky Score moved to the 2nd element
 		}
 
 		let data_similar = document.querySelectorAll("[data-similar-unavailable]")
 		if (data_similar.length > 0) {
 			prop_limitedsupply_booked = data_similar[0].textContent.trim().replaceAll("\n","")
 		}
-		
+
 		let data_surrounding = document.querySelector("[id='surroundings_block']")
 		let prop_liftdistance = 0
 		if (data_surrounding != null) {
@@ -364,7 +376,7 @@ function get_rooms( ) {
 					else unit = 1 ;
 					distance = parseFloat( "0"+distance.replace(/\D/g, '') )
 					prop_liftdistance = distance * unit
-					
+
 				}
 			}
 		}
@@ -381,8 +393,8 @@ function get_rooms( ) {
 
 		let room_details = null
 		for (let room of rooms) {
-			
-			if (room.querySelectorAll("td").length >=5) room_details = room // set the first row of room types as details
+
+			if (room.querySelectorAll("td").length >=4) room_details = room // set the first row of room types as details
 
 			// Name and details
 			let id = room_details.querySelector("a[data-room-id]")
