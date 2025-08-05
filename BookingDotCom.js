@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Data Collector for booking.com
 // @namespace    http://tampermonkey.net/
-// @version      0.19
+// @version      0.20
 // @description  Extracts room info for the searched dates
 // @author       Yoon-Kit Yong
 // @match        https://www.booking.com/hotel/*
@@ -392,9 +392,12 @@ function get_rooms( ) {
 		let room_scarcity = 0
 
 		let room_details = null
+		let room_prevlastrow = true
 		for (let room of rooms) {
 
-			if (room.querySelectorAll("td").length >=4) room_details = room // set the first row of room types as details
+			//if (room.querySelectorAll("td").length >=4) room_details = room // set the first row of room types as details
+			if (room_prevlastrow) room_details = room // Previous row was the last, so this one, set the details to this room.
+			room_prevlastrow = room.className.includes( 'hprt-table-last-row' )
 
 			// Name and details
 			let id = room_details.querySelector("a[data-room-id]")
