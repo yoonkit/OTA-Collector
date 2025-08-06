@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Data Collector for booking.com
 // @namespace    http://tampermonkey.net/
-// @version      0.21
+// @version      0.22
 // @description  Extracts room info for the searched dates
 // @author       Yoon-Kit Yong
 // @match        https://www.booking.com/hotel/*
@@ -292,9 +292,9 @@ function get_rooms( ) {
 	}
 
     if (genius_level == 0) { // 250731 yky If the width is too small, have to extract Genius level from the BUI Card.
-        bui = document.querySelector( "section.bui-card")
+        let bui = document.querySelector( "section.bui-card")
         if (bui != null) {
-            level = bui.innerText.split(" rewards")[0]
+            let level = bui.innerText.split(" rewards")[0]
             if (level.length>1) { genius_level = parseInt( "0" + level.replace(/\D/g, '') ) }
         }
     }
@@ -513,7 +513,7 @@ function get_rooms( ) {
             let room_price_original = room_price
             let original = room.querySelector( "div.bui-price-display__original" )
 			if (original != null) {
-				room_price_original = parseFloat( original.attributes["data-strikethrough-value"].textContent )
+				room_price_original = parseFloat( original.attributes["data-strikethrough-value"].textContent ) / dt_length
 			}
 
             let room_tax = 0
@@ -648,7 +648,7 @@ function get_rooms( ) {
 			let sroom_cancelby = date_to_yyyymmdd(room_cancelby)
 
 			result.push(
-			[ prop_name, room_name, room_sqm, room_guests, room_price, sdt_start, room_discountpct, room_geniusdiscount, room_deal, room_credits, room_bfast, room_bfastpricepax, room_dinner, room_minimumdays, room_remaining, room_reschedule, room_refundable, room_refundablewindow, room_freecancel, room_cancelwindow, room_paynothing, room_paynothingwindow, room_bedrooms, bed_single, bed_double, bed_king, bed_sofa, bed_futon, bed_pax, room_scarcity, room_tax, room_partneroffer, room_kitchenprivate, room_kitchen, room_ensuite, room_washingmachine, room_tumbledryer, room_view, room_balcony, room_id, prop_reviewscore, prop_limitedsupply_booked, room_price_currency, sdt_sample, search_adult, search_room, dt_length, genius_user, genius_level, prop_vpn, prop_liftdistance, room_totprice, room_tottax, sdt_end, room_facilities, sroom_cancelby, sroom_paynothingby, prop_url,
+			[ prop_name, room_name, room_sqm, room_guests, room_price, sdt_start, room_discountpct, room_geniusdiscount, room_deal, room_credits, room_bfast, room_bfastpricepax, room_dinner, room_minimumdays, room_remaining, room_reschedule, room_refundable, room_refundablewindow, room_freecancel, room_cancelwindow, room_paynothing, room_paynothingwindow, room_bedrooms, bed_single, bed_double, bed_king, bed_sofa, bed_futon, bed_pax, room_scarcity, room_tax, room_partneroffer, room_kitchenprivate, room_kitchen, room_ensuite, room_washingmachine, room_tumbledryer, room_view, room_balcony, room_id, prop_reviewscore, prop_limitedsupply_booked, room_price_currency, sdt_sample, search_adult, search_room, dt_length, genius_user, genius_level, prop_vpn, prop_liftdistance, room_price_original, room_totprice, room_tottax, sdt_end, room_facilities, sroom_cancelby, sroom_paynothingby, prop_url,
 			] )
 
 			ykAlert("Room: " + room_name + " - price: " + room_price_currency + " " + room_price.toLocaleString() + " (" + room_discountpct + "%) pax: (" + room_guests + "," + bed_pax + ") refunddays: " + room_refundablewindow , 2)
@@ -724,7 +724,7 @@ function extract_csv()
 	let result = get_rooms( )
 	let result_csv = toCSV( result, '\t' )
 
-	let labels = "prop_name, room_name, room_sqm,  room_guests, room_price,  dt_start, room_discountpct, room_geniusdiscount, room_deal, room_credits, room_bfast, room_bfastpricepax, room_dinner, room_minimumdays, room_remaining, room_reschedule, room_refundable, room_refundablewindow, room_freecancel, room_cancelwindow, room_paynothing, room_paynothingwindow, room_bedrooms, bed_single, bed_double, bed_king, bed_sofa, bed_futon, bed_pax, room_scarcity, room_tax, room_partneroffer, room_kitchenprivate, room_kitchen, room_ensuite, room_washingmachine, room_tumbledryer, room_view, room_balcony, room_id,  prop_reviewscore, prop_limitedsupply_booked, room_price_currency, dt_sample, search_adult, search_room, dt_length, genius_user, genius_level, prop_vpn, prop_liftdistance, room_totprice, room_tottax, dt_end, room_facilities, room_cancelby,  room_paynothingby,  prop_url".replaceAll(",","\t")
+	let labels = "prop_name, room_name, room_sqm,  room_guests, room_price,  dt_start, room_discountpct, room_geniusdiscount, room_deal, room_credits, room_bfast, room_bfastpricepax, room_dinner, room_minimumdays, room_remaining, room_reschedule, room_refundable, room_refundablewindow, room_freecancel, room_cancelwindow, room_paynothing, room_paynothingwindow, room_bedrooms, bed_single, bed_double, bed_king, bed_sofa, bed_futon, bed_pax, room_scarcity, room_tax, room_partneroffer, room_kitchenprivate, room_kitchen, room_ensuite, room_washingmachine, room_tumbledryer, room_view, room_balcony, room_id,  prop_reviewscore, prop_limitedsupply_booked, room_price_currency, dt_sample, search_adult, search_room, dt_length, genius_user, genius_level, prop_vpn, prop_liftdistance, room_price_original, room_totprice, room_tottax, dt_end, room_facilities, room_cancelby,  room_paynothingby,  prop_url".replaceAll(",","\t")
 	localStorage.bookingcomlabels = labels
 
     let stored = localStorage.bookingcom
