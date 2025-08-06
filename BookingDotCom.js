@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Data Collector for booking.com
 // @namespace    http://tampermonkey.net/
-// @version      0.20
+// @version      0.21
 // @description  Extracts room info for the searched dates
 // @author       Yoon-Kit Yong
 // @match        https://www.booking.com/hotel/*
@@ -93,23 +93,28 @@ function create_UI() {
 
 	ykAlert("Creating UI for booking.com collector",3)
 
+    //var btnBook = document.getElementById("hp_book_now_button")
+
     var div = document.createElement("div")
     div.style = "font-size:12px;"
 
 	var btncsv = document.createElement("Button");
-	btncsv.innerHTML = "| Find Rooms |&nbsp&nbsp";
+	//btncsv.innerHTML = "| Find Rooms |&nbsp&nbsp";
+    btncsv.innerHTML = "<span class='bui-button__text'> Find Rooms </span>"
 	btncsv.id = "findRooms"
+    btncsv.classList = "bui-button"
 	btncsv.onclick = function()
 	{
 		extract_csv()
 		btnUpdate.click()
+        //btncsv.innerHTML = "<B> " + btncsv.innerHTML + " </B>"
 	}
 
 	div.appendChild(btncsv)
 
     var cbDiv = document.createElement("div")
     var cbIncludeHeader = document.createElement("INPUT")
-    var cbText = document.createTextNode("  Include Headers |&nbsp&nbsp")
+    var cbText = document.createTextNode("  Include Headers |")
     cbIncludeHeader.setAttribute("type", "checkbox")
     cbIncludeHeader.id = "includeHeader"
     cbDiv.appendChild(cbIncludeHeader)
@@ -117,7 +122,8 @@ function create_UI() {
 	div.appendChild(cbDiv)
 
     var btncopy = document.createElement("Button");
-	btncopy.innerHTML = "| Copy to Clipboard |&nbsp&nbsp";
+    btncopy.classList = "bui-button"
+	btncopy.innerHTML = "<span class='bui-button__text'> Copy to Clipboard </span>";
 	btncopy.onclick = function() {
         let content = localStorage.bookingcom
         if (cbIncludeHeader.checked) {
@@ -129,7 +135,8 @@ function create_UI() {
 	div.appendChild(btncopy)
 
 	var btnclear = document.createElement("Button");
-	btnclear.innerHTML = "| Clear Memory |&nbsp&nbsp";
+    btnclear.classList = "bui-button"
+	btnclear.innerHTML = "<span class='bui-button__text'> Clear Memory </span>";
 	btnclear.id = "clearMemory"
 	btnclear.onclick = function()
 	{
@@ -152,8 +159,10 @@ function create_UI() {
 	div.appendChild(btnUpdate)
 
     // let ava = document.getElementById("availability_target")
-	let ava = document.getElementsByClassName( "hp-description" )[0] // 250731 yky "availability-target" doesnt allow clickable buttons
-    ava.appendChild(div)
+	//let ava = document.getElementsByClassName( "hp-description" )[0] // 250731 yky "availability-target" doesnt allow clickable buttons
+    //ava.appendChild(div)
+    let ava = document.getElementById(  "available_rooms" )
+    ava.prepend( div )
 
     var dVPN = document.createElement("div")
     var cbIsVPN = document.createElement("INPUT")
@@ -558,17 +567,21 @@ function get_rooms( ) {
 			let room_prepayment = true
 			let room_bfast = false
 			let room_bfastpricepax = 0
+            let room_dinner = false
 			let room_partneroffer = false
 
-			let conditions = room.querySelectorAll( "li.bui-list__item" )
-			if (conditions.length == 0) { // Partner Offers tend to mess this TD up
-				conditions = room.querySelector("div.tpi-options--section").querySelectorAll("li")
-				room_partneroffer = true
-			}
+			//let conditions = room.querySelectorAll( "li.bui-list__item" )
+            //let conditions = room.querySelector("div.tpi-options--section").innerText.split("\n")
+            let conditions = room.getElementsByClassName( "hprt-table-cell-conditions" )[0].innerText.split("\n")
+
+			//if (conditions.length == 0) { // 240101 yky Partner Offers tend to mess this TD up
+			//	conditions = room.querySelector("div.tpi-options--section").querySelectorAll("li")
+			//	room_partneroffer = true
+			//}
 
 
 			for (let condition of conditions) {
-				description = condition.textContent.trim()
+				description = condition.trim()
 
 				if (description.indexOf("reschedule") >= 0) {
 					room_reschedule = true
@@ -576,7 +589,9 @@ function get_rooms( ) {
 					room_refundable = false
 				} else if (description.indexOf("Pay in advance") >= 0) {
 					room_paynothing = false
-				} else if (description.indexOf("Genius discount") >= 0) {
+				} else if (description.indexOf("Partner offer") >= 0) {
+                    room_partneroffer = true
+                } else if (description.indexOf("Genius discount") >= 0) {
 					room_geniusdiscount = parseFloat( description.replace(/\D/g, '') )
 				} else if (description.indexOf(" left on our site") >= 0) {
 					room_remaining = parseInt( description.replace(/\D/g, '') )
@@ -605,7 +620,10 @@ function get_rooms( ) {
 					if (!room_bfast) {
 						room_bfastpricepax = parseFloat( description.replace(/\D/g, '') )
 					}
-				}
+                    if (description.indexOf("dinner") >= 0) { // 250806 yky Shin Furano Prince has bfast and dinner rooms.
+                        room_dinner = description.indexOf("included") >= 0
+                    }
+                }
 
 				if (room_refundable) {
 					room_refundablewindow = Math.min(
@@ -622,7 +640,7 @@ function get_rooms( ) {
 			let room_tumbledryer = room_facilities.indexOf("Tumble dryer") >= 0
 			let room_view = room_details.querySelector( "svg.-streamline-mountains" ) != null
 			let room_balcony = room_details.querySelector( "svg.-streamline-resort" ) != null
-			
+
 			let sdt_end = date_to_yyyymmdd(dt_end)
 			let sdt_sample = date_to_yyyymmdd(dt_sample)
 			let sdt_start = date_to_yyyymmdd(dt_start)
@@ -630,7 +648,7 @@ function get_rooms( ) {
 			let sroom_cancelby = date_to_yyyymmdd(room_cancelby)
 
 			result.push(
-			[ prop_name, room_name, room_sqm, room_guests, room_price, sdt_start, room_discountpct, room_geniusdiscount, room_deal, room_credits, room_bfast, room_bfastpricepax, room_minimumdays, room_remaining, room_reschedule, room_refundable, room_refundablewindow, room_freecancel, room_cancelwindow, room_paynothing, room_paynothingwindow, room_bedrooms, bed_single, bed_double, bed_king, bed_sofa, bed_futon, bed_pax, room_scarcity, room_tax, room_partneroffer, room_kitchenprivate, room_kitchen, room_ensuite, room_washingmachine, room_tumbledryer, room_view, room_balcony, room_id, prop_reviewscore, prop_limitedsupply_booked, room_price_currency, sdt_sample, search_adult, search_room, dt_length, genius_user, genius_level, prop_vpn, prop_liftdistance, room_totprice, room_tottax, sdt_end, room_facilities, sroom_cancelby, sroom_paynothingby, prop_url,
+			[ prop_name, room_name, room_sqm, room_guests, room_price, sdt_start, room_discountpct, room_geniusdiscount, room_deal, room_credits, room_bfast, room_bfastpricepax, room_dinner, room_minimumdays, room_remaining, room_reschedule, room_refundable, room_refundablewindow, room_freecancel, room_cancelwindow, room_paynothing, room_paynothingwindow, room_bedrooms, bed_single, bed_double, bed_king, bed_sofa, bed_futon, bed_pax, room_scarcity, room_tax, room_partneroffer, room_kitchenprivate, room_kitchen, room_ensuite, room_washingmachine, room_tumbledryer, room_view, room_balcony, room_id, prop_reviewscore, prop_limitedsupply_booked, room_price_currency, sdt_sample, search_adult, search_room, dt_length, genius_user, genius_level, prop_vpn, prop_liftdistance, room_totprice, room_tottax, sdt_end, room_facilities, sroom_cancelby, sroom_paynothingby, prop_url,
 			] )
 
 			ykAlert("Room: " + room_name + " - price: " + room_price_currency + " " + room_price.toLocaleString() + " (" + room_discountpct + "%) pax: (" + room_guests + "," + bed_pax + ") refunddays: " + room_refundablewindow , 2)
@@ -648,7 +666,7 @@ function get_rooms( ) {
 function decode_bookingdate( dt, hasyear=true ) {
 	// looks like 'Fri 14 Feb'
 	let today = new Date()
-	
+
 	if (!hasyear) { dt = dt + ' ' + today.getFullYear().toString()}
 	let parsed = new Date( Date.parse( dt ) )
 
@@ -706,7 +724,7 @@ function extract_csv()
 	let result = get_rooms( )
 	let result_csv = toCSV( result, '\t' )
 
-	let labels = "prop_name, room_name, room_sqm,  room_guests, room_price,  dt_start, room_discountpct, room_geniusdiscount, room_deal, room_credits, room_bfast, room_bfastpricepax, room_minimumdays, room_remaining, room_reschedule, room_refundable, room_refundablewindow, room_freecancel, room_cancelwindow, room_paynothing, room_paynothingwindow, room_bedrooms, bed_single, bed_double, bed_king, bed_sofa, bed_futon, bed_pax, room_scarcity, room_tax, room_partneroffer, room_kitchenprivate, room_kitchen, room_ensuite, room_washingmachine, room_tumbledryer, room_view, room_balcony, room_id,  prop_reviewscore, prop_limitedsupply_booked, room_price_currency, dt_sample, search_adult, search_room, dt_length, genius_user, genius_level, prop_vpn, prop_liftdistance, room_totprice, room_tottax, dt_end, room_facilities, room_cancelby,  room_paynothingby,  prop_url".replaceAll(",","\t")
+	let labels = "prop_name, room_name, room_sqm,  room_guests, room_price,  dt_start, room_discountpct, room_geniusdiscount, room_deal, room_credits, room_bfast, room_bfastpricepax, room_dinner, room_minimumdays, room_remaining, room_reschedule, room_refundable, room_refundablewindow, room_freecancel, room_cancelwindow, room_paynothing, room_paynothingwindow, room_bedrooms, bed_single, bed_double, bed_king, bed_sofa, bed_futon, bed_pax, room_scarcity, room_tax, room_partneroffer, room_kitchenprivate, room_kitchen, room_ensuite, room_washingmachine, room_tumbledryer, room_view, room_balcony, room_id,  prop_reviewscore, prop_limitedsupply_booked, room_price_currency, dt_sample, search_adult, search_room, dt_length, genius_user, genius_level, prop_vpn, prop_liftdistance, room_totprice, room_tottax, dt_end, room_facilities, room_cancelby,  room_paynothingby,  prop_url".replaceAll(",","\t")
 	localStorage.bookingcomlabels = labels
 
     let stored = localStorage.bookingcom
